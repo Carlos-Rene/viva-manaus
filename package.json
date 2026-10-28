@@ -1,0 +1,10 @@
+{
+  "name": "viva-manaus",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/preview-worker.mjs",
+    "build": "node scripts/build-worker.mjs",
+    "test": "node tests/security-checks.mjs && node tests/structure-checks.mjs && node tests/park-map-checks.mjs && node tests/photo-discovery-checks.mjs && node tests/photo-analysis-checks.mjs"
+  }
+}

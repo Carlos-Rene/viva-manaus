@@ -1,0 +1,95 @@
+<section id="nature" class="page">
+  <div class="eyebrow">OLHARES CURIOSOS</div>
+  <h1>Olhar curioso</h1>
+  <p>
+    O que chamou sua atenção pelo caminho? Fotografe algo curioso e descubra
+    mais sobre o que você encontrou.
+  </p>
+  <div class="grid">
+    <div class="box">
+      <div class="discovery-photo" style="height: 280px; font-size: 140px">
+        ✨<span class="tag">UM NOVO OLHAR PARA O COTIDIANO</span>
+      </div>
+      <h2 style="margin-top: 22px">Encontre algo que desperte sua curiosidade</h2>
+      <p>
+        Pode ser um detalhe da natureza, um animal, uma forma, uma paisagem ou
+        qualquer outra coisa que você queira observar.
+      </p>
+      <div id="cameraPanel" class="hidden">
+        <video
+          id="cameraFeed"
+          autoplay
+          muted
+          playsinline
+          aria-label="Imagem ao vivo da câmera"
+        ></video
+        ><button
+          class="btn"
+          id="captureButton"
+          onclick="captureDiscoveryPhoto()"
+        >
+          Tirar foto</button
+        ><button class="btn ghost" onclick="stopCamera()">Fechar câmera</button>
+      </div>
+      <p id="cameraStatus" role="status"></p>
+      <div class="camera-actions">
+        <button class="btn" onclick="openCamera()">
+          Fotografar algo curioso</button
+        ><button
+          class="btn ghost"
+          onclick="document.getElementById('photo').click()"
+        >
+          Escolher da galeria
+        </button>
+      </div>
+      <input
+        id="photo"
+        class="hidden"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onchange="previewPhoto(event)"
+      />
+      <div id="photoActions" class="hidden">
+        <button class="chip" onclick="openCamera()">Refazer foto</button
+        ><button class="chip" onclick="clearDiscoveryPhoto()">Remover foto</button>
+      </div>
+      <div class="row" style="margin-top: 18px">
+        <button class="btn" id="analyzePhotoButton" onclick="discoverPhoto()">
+          Descobrir mais sobre minha foto →
+        </button>
+      </div>
+      <label class="ai-consent">
+        <input id="photoAnalysisConsent" type="checkbox" />
+        <span>
+          Concordo em enviar esta foto ao serviço de análise configurado. O Viva
+          não a salva permanentemente; confira as regras do servidor e envie
+          apenas imagens que você tem autorização para compartilhar.
+        </span>
+      </label>
+      <p class="sub">
+        Imagens JPEG, PNG ou WebP de até 5 MB. A disponibilidade e os limites
+        dependem da sua conta Google.
+      </p>
+      <p id="analysisStatus" role="status" aria-live="polite"></p>
+    </div>
+    <div>
+      <div class="box">
+        <h2>Sem pressa, sem obrigação</h2>
+        <p>
+          Observe no seu ritmo. Você não precisa cumprir etapas, identificar o
+          que encontrou ou registrar uma descoberta.
+        </p>
+      </div>
+      <div class="notice" style="margin-top: 18px">
+        A foto só é enviada depois do seu consentimento. A identificação pode
+        ser incerta; confira informações importantes em fontes confiáveis.
+      </div>
+      <div class="box" style="margin-top: 18px">
+        <h3>Minhas descobertas</h3>
+        <div id="herbarium" class="sub">
+          Suas descobertas salvas aparecem aqui.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,112 @@
+<section id="routine" class="page">
+  <div class="eyebrow">CUIDADO QUE CABE NA ROTINA</div>
+  <h1>Bem-estar, no seu ritmo.</h1>
+  <p>Observe seus hábitos e descubra espaço para pequenas mudanças.</p>
+  <div class="grid">
+    <div class="box">
+      <h2>Minha semana em movimento</h2>
+      <span class="sub"
+        >Minutos registrados neste navegador · semana atual</span
+      >
+      <div id="week" class="week"></div>
+      <p id="insight"></p>
+      <h3>Atividades concluídas</h3>
+      <div id="history"></div>
+    </div>
+    <div class="box">
+      <h2>Seu check-in de rotina</h2>
+      <div class="field">
+        <label for="sleep">Quantas horas você dormiu?</label
+        ><input
+          id="sleep"
+          type="number"
+          min="0"
+          max="24"
+          step="0.5"
+          placeholder="Ex.: 7.5"
+        />
+      </div>
+      <div class="field">
+        <label for="goal">O que você busca?</label
+        ><select id="goal">
+          <option>Mais disposição</option>
+          <option>Relaxar e desacelerar</option>
+          <option>Criar constância</option>
+          <option>Explorar coisas novas</option>
+          <option>Movimentar o corpo</option>
+        </select>
+      </div>
+      <button class="btn" onclick="saveRoutine()">Salvar meu check-in</button>
+      <div id="routineAdvice" class="notice" style="margin-top: 20px">
+        Registre sua rotina para receber uma sugestão simples de próximo passo.
+      </div>
+      <p class="sub">
+        Reflexões de bem-estar geral, sem avaliação clínica ou diagnóstico.
+      </p>
+    </div>
+  </div>
+  <div class="box routine-extra">
+    <h2>Como foi seu dia?</h2>
+    <div class="field">
+      <label for="dayMood">Humor</label
+      ><select id="dayMood">
+        <option>Bem</option>
+        <option>Mais ou menos</option>
+        <option>Desanimado</option>
+        <option>Agitado</option>
+        <option>Tranquilo</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="dayEnergy">Disposição</label
+      ><select id="dayEnergy">
+        <option>Pouca</option>
+        <option selected>Moderada</option>
+        <option>Muita</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="dayStress">Tensão do dia</label
+      ><select id="dayStress">
+        <option>Baixa</option>
+        <option selected>Moderada</option>
+        <option>Alta</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="sleepQuality">Como foi o sono?</label
+      ><select id="sleepQuality">
+        <option>Bom</option>
+        <option>Regular</option>
+        <option>Ruim</option>
+      </select>
+    </div>
+    <button class="btn" onclick="saveDayCheckin()">Salvar meu dia</button>
+    <p id="dayCheckinSummary" class="sub"></p>
+  </div>
+  <div class="box routine-extra">
+    <h2>Minhas metas</h2>
+    <div class="field">
+      <label for="weeklyMinutesGoal">Minutos de atividade na semana</label
+      ><input
+        id="weeklyMinutesGoal"
+        type="number"
+        min="5"
+        max="3000"
+        step="5"
+        value="90"
+      />
+    </div>
+    <div class="field">
+      <label for="weeklyDaysGoal">Dias ativos por semana</label
+      ><input id="weeklyDaysGoal" type="number" min="1" max="7" value="3" />
+    </div>
+    <button class="btn" onclick="savePersonalGoals()">Salvar metas</button>
+    <p id="personalProgress" class="notice"></p>
+  </div>
+  <div class="box routine-extra">
+    <h2>Minhas caminhadas</h2>
+    <div id="walkHistorySummary"></div>
+    <div id="walkHistoryRoutes"></div>
+  </div>
+</section>

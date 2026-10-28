@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Viva · Uma pausa que faz bem</title
+  ><link rel="stylesheet" href="/styles/app.css" />
+  <div id="splash" role="status" aria-live="polite">
+    <div class="splash-logo">viva<span>↗</span></div>
+    <div class="splash-track"><i></i></div>
+    <p>Preparando seu dia</p>
+  </div>
+  <aside>
+    <div class="logo">viva<i>✳</i></div>
+    <small>Movimente seu dia.</small>
+    <nav>
+      <button data-page="home" class="active">
+        <img
+          src="/assets/images/visual-1.svg"
+          class="nav-icon"
+          alt=""
+        />Início</button
+      ><button data-page="activities">
+        <img
+          src="/assets/images/visual-2.svg"
+          class="nav-icon"
+          alt=""
+        />Atividades</button
+      ><button data-page="nature">
+        <img
+          src="/assets/images/visual-curiosity.svg"
+          class="nav-icon"
+          alt=""
+        />Olhar curioso</button
+      ><button data-page="routine">
+        <img
+          src="/assets/images/visual-4.svg"
+          class="nav-icon"
+          alt=""
+        />Meu ritmo
+      </button>
+    </nav>
+    <footer>
+      UM PASSO DE CADA VEZ<br /><b
+        >Pequenas pausas.<br />Novas possibilidades.</b
+      ><br />Protótipo interativo · v1.0
+    </footer>
+  </aside>
+  <main>
+    <header>
+      <div class="brand">
+        <img
+          src="/assets/images/visual-5.svg"
+          alt=""
+          style="width: 100%; height: 100%"
+        />viva<span
+          style="
+            font-size: 9px;
+            letter-spacing: 0;
+            margin-left: 5px;
+            color: #a1aa96;
+            font-weight: 500;
+          "
+        ></span>
+      </div>
+      <button class="avatar" onclick="go('profiles')" aria-label="Minha conta">
+        U
+      </button>
+    </header>
+    <div id="profileBanner" class="profile-banner">
+      <span id="activeProfileText">Perfil usuário</span
+      ><button onclick="go('profiles')">Minha conta</button
+      ><button id="devShortcut" class="hidden" onclick="go('developer')">
+        Painel developer ↗
+      </button>
+    </div>
+    <!-- VIEW:home -->
+    <!-- VIEW:activities -->
+    <!-- VIEW:nature -->
+    <!-- VIEW:routine -->
+    <!-- VIEW:exercises -->
+    <!-- VIEW:walk -->
+    <!-- VIEW:profiles -->
+    <!-- VIEW:developer -->
+    <!-- VIEW:events -->
+    <!-- VIEW:presentation -->
+    <!-- VIEW:about -->
+    <!-- VIEW:devlogin -->
+  </main>
+  <div
+    id="modal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Detalhes"
+  >
+    <div class="dialog">
+      <button class="close" onclick="closeModal()" aria-label="Fechar">
+        ✕
+      </button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  <div id="toast" class="toast hidden" role="status"></div>
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
+  <script src="/vendor/leaflet/leaflet.js"></script>
+  <script src="/scripts/app.js"></script>
+</html>

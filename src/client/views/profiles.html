@@ -1,0 +1,23 @@
+<section id="profiles" class="page">
+  <button class="chip" onclick="go('home')">← Início</button>
+  <h1>Minha conta</h1>
+  <div class="box">
+    <p id="accountStatus">Verificando sua conta…</p>
+    <p id="accountRole"></p>
+    <button
+      id="openDevButton"
+      class="btn hidden"
+      onclick="setProfile('developer')"
+    >
+      Abrir painel de desenvolvedor</button
+    ><button class="btn ghost" onclick="setProfile('user')">
+      Usar o aplicativo</button
+    ><button class="btn ghost" onclick="go('devlogin')">
+      Login de desenvolvedor</button
+    ><button class="chip" onclick="go('about')">Sobre o Viva</button>
+  </div>
+  <p class="sub">
+    Somente contas autorizadas no servidor podem publicar ou alterar o catálogo
+    do aplicativo.
+  </p>
+</section>

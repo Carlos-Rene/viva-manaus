@@ -1,0 +1,38 @@
+<section id="exercises" class="page">
+  <button class="chip" onclick="go('activities')">
+    ← Voltar às atividades
+  </button>
+  <div class="eyebrow">Exercícios com orientação</div>
+  <h1>Treine no seu ritmo.</h1>
+  <p>
+    Veja como fazer o movimento e acompanhe um treino por séries ou um
+    alongamento por tempo.
+  </p>
+  <div class="notice">
+    A duração original e a liberação para incorporar dependem do vídeo. Escolha
+    movimentos adequados ao seu nível e interrompa se sentir dor.
+  </div>
+  <div id="minutePanel" class="box hidden" style="margin-top: 20px">
+    <span class="eyebrow">PRÁTICA DE 60 SEGUNDOS</span>
+    <h3 id="minuteTitle"></h3>
+    <div id="minuteClock" class="big-clock">01:00</div>
+    <p id="minuteMessage"></p>
+    <button class="btn ghost" id="minutePause" onclick="pauseMinute()">
+      Pausar</button
+    ><button class="btn" id="minuteSave" onclick="saveMinute()" disabled>
+      Concluir e registrar</button
+    ><button class="chip" onclick="cancelMinute()">Cancelar</button>
+  </div>
+  <div class="box" style="margin-top: 20px">
+    <h2>Treinos e alongamentos</h2>
+    <p>
+      Modelos ajustáveis para acompanhar séries ou tempo. Comece com menos se
+      precisar e não force movimentos dolorosos.
+    </p>
+    <div id="workoutCards"></div>
+  </div>
+  <div id="activeWorkout" class="box hidden" style="margin-top: 18px"></div>
+  <h2 style="margin-top: 25px">Vídeos da equipe</h2>
+  <div id="videoFilters" class="chips"></div>
+  <div id="exerciseLessons"></div>
+</section>

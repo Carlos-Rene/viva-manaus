@@ -1,0 +1,19 @@
+<section id="events" class="page">
+  <button class="chip" onclick="go('home')">← Início</button>
+  <div class="eyebrow">MANAUS · VAMOS JUNTOS</div>
+  <h1>Encontre sua turma.</h1>
+  <p>Corrida, atletismo, bike, caminhada e atividades físicas em grupo.</p>
+  <label for="eventSearch" class="sub"
+    >Pesquisar encontro esportivo ou local</label
+  ><input
+    id="eventSearch"
+    placeholder="Buscar pedal, corrida ou caminhada…"
+    oninput="eventSearch=this.value;renderEvents()"
+  />
+  <div id="eventFilters" class="chips"></div>
+  <div id="eventList"></div>
+  <div class="notice" style="margin-top: 18px">
+    Encontros publicados pela equipe. Confirme os detalhes com o organizador.
+    Salvar interesse não faz inscrição; exemplos não são eventos agendados.
+  </div>
+</section>

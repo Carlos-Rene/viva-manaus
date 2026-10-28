@@ -1,0 +1,14 @@
+[
+  "scripts/features/activities.js",
+  "scripts/features/core.js",
+  "scripts/features/wellbeing.js",
+  "scripts/features/camera.js",
+  "scripts/features/videos.js",
+  "scripts/features/walking.js",
+  "scripts/features/parks.js",
+  "scripts/features/developer.js",
+  "scripts/features/events.js",
+  "scripts/features/workouts.js",
+  "scripts/app.js",
+  "scripts/features/tutorial.js"
+]

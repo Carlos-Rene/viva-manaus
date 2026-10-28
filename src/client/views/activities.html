@@ -1,0 +1,36 @@
+<section id="activities" class="page">
+  <div class="eyebrow">MENOS TÉDIO, MAIS POSSIBILIDADES</div>
+  <h1>O que combina com você hoje?</h1>
+  <p id="recText">Explore um jeito novo de usar seu tempo livre.</p>
+  <div class="box" id="checkin">
+    <div class="row">
+      <h2>Como você está agora?</h2>
+      <span class="sub">FEITO PARA VOCÊ</span>
+    </div>
+    <p>Seu ânimo ajuda a escolher o próximo passo.</p>
+    <div class="moods" id="moods"></div>
+    <div class="row"><b>Quanto tempo é só seu?</b></div>
+    <div class="chips" id="times"></div>
+    <h3>O que você quer fazer?</h3>
+    <div class="chips" id="intentOptions"></div>
+    <div class="row">
+      <span class="sub">Vamos encontrar algo que faça sentido.</span
+      ><button class="btn" onclick="recommend()">
+        Encontrar minha atividade →
+      </button>
+    </div>
+  </div>
+  <button class="exercise-banner" onclick="go('exercises')">
+    <span>EXERCÍCIOS LIVRES</span>
+    <h3>Exercícios e alongamentos de 1 minuto ↗</h3>
+    <p>Vídeos do YouTube por link · exercícios e alongamentos de 1 minuto</p>
+  </button>
+  <div class="results-intro">
+    <span class="eyebrow">ESCOLHIDAS PARA ESTE MOMENTO</span>
+    <h2 id="resultsHeading">Suas opções</h2>
+    <div id="matchSummary" class="match-summary"></div>
+    <p id="matchReason"></p>
+  </div>
+  <div class="chips" id="categories"></div>
+  <div id="activityList" class="cards"></div>
+</section>

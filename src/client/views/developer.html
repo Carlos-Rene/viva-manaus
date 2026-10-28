@@ -1,0 +1,288 @@
+<section id="developer" class="page">
+  <div class="eyebrow">VIVA STUDIO · DESENVOLVEDOR</div>
+  <h1>Seu conteúdo.<br />Mais movimento.</h1>
+  <p>
+    Gerencie identidade, telas, atividades, vídeos, parques e eventos de Manaus.
+  </p>
+  <div id="devDenied" class="notice hidden">
+    Você não tem autorização para abrir este painel.
+  </div>
+  <div id="devContent">
+    <div class="notice">
+      Painel restrito a contas autorizadas. O catálogo publicado fica disponível
+      aos usuários do aplicativo.
+    </div>
+    <div class="chips admin-tabs">
+      <button
+        class="chip selected"
+        data-admin-tab="general"
+        onclick="adminTab('general')"
+      >
+        Geral</button
+      ><button
+        class="chip"
+        data-admin-tab="videos"
+        onclick="adminTab('videos')"
+      >
+        Vídeos</button
+      ><button class="chip" data-admin-tab="parks" onclick="adminTab('parks')">
+        Parques</button
+      ><button
+        class="chip"
+        data-admin-tab="events"
+        onclick="adminTab('events')"
+      >
+        Eventos</button
+      ><button
+        class="chip"
+        data-admin-tab="activities"
+        onclick="adminTab('activities')"
+      >
+        Atividades</button
+      ><button class="chip" data-admin-tab="texts" onclick="adminTab('texts')">
+        Textos</button
+      ><button
+        class="chip"
+        data-admin-tab="advanced"
+        onclick="adminTab('advanced')"
+      >
+        Avançado
+      </button>
+    </div>
+    <div id="admin-general" class="admin-section">
+      <h2>Identidade e aparência</h2>
+      <form onsubmit="saveSettings(event)">
+        <label for="cfg-brand">Nome do app</label
+        ><input id="cfg-brand" type="text" required /><label for="cfg-welcome"
+          >Título da tela inicial</label
+        ><input id="cfg-welcome" type="text" required /><label for="cfg-intro"
+          >Subtítulo da tela inicial</label
+        ><input id="cfg-intro" type="text" required /><label for="cfg-accent"
+          >Cor dos botões</label
+        ><input id="cfg-accent" type="color" required /><label
+          for="cfg-routeColor"
+          >Cor do percurso</label
+        ><input id="cfg-routeColor" type="color" required /><label
+          for="cfg-background"
+          >Cor de fundo</label
+        ><input id="cfg-background" type="color" required /><button
+          class="btn"
+          style="margin-top: 15px"
+        >
+          Aplicar aparência e textos
+        </button>
+      </form>
+      <p id="adminParkCount"></p>
+    </div>
+    <div id="admin-videos" class="admin-section hidden">
+      <div class="box" style="margin-top: 20px">
+        <h2>Cadastrar vídeo no catálogo</h2>
+        <form onsubmit="addYoutube(event)">
+          <label for="ytTitle">Nome do vídeo</label
+          ><input
+            id="ytTitle"
+            maxlength="100"
+            required
+            placeholder="Ex.: Alongamento de ombros"
+          /><label for="ytLink">Link do YouTube ou Shorts</label
+          ><input
+            id="ytLink"
+            type="url"
+            required
+            placeholder="https://www.youtube.com/watch?v=..."
+          />
+          <div class="row">
+            <div>
+              <label for="ytType">Categoria</label
+              ><select id="ytType">
+                <option value="Exercício">Treino</option>
+                <option>Alongamento</option>
+              </select>
+            </div>
+            <div>
+              <label for="ytStart">Início do trecho (segundos)</label
+              ><input
+                id="ytStart"
+                type="number"
+                min="0"
+                max="86400"
+                step="1"
+                value="0"
+                required
+              />
+            </div>
+          </div>
+          <fieldset class="workout-fieldset">
+            <legend>Como praticar este vídeo</legend>
+            <label for="ytMode">Formato da prática</label
+            ><select id="ytMode" onchange="toggleVideoPlanFields()">
+              <option value="time">Por tempo (alongamento / movimento)</option>
+              <option value="reps">Séries e repetições (treino)</option>
+            </select>
+            <div id="ytTimeFields">
+              <label for="ytSeconds">Tempo total em segundos</label
+              ><input
+                id="ytSeconds"
+                type="number"
+                min="10"
+                max="600"
+                value="60"
+              />
+            </div>
+            <div id="ytRepsFields" class="hidden">
+              <label for="ytSets">Séries</label
+              ><input
+                id="ytSets"
+                type="number"
+                min="1"
+                max="10"
+                value="3"
+              /><label for="ytReps">Repetições por série</label
+              ><input
+                id="ytReps"
+                type="number"
+                min="1"
+                max="100"
+                value="10"
+              /><label for="ytRest">Descanso entre séries (segundos)</label
+              ><input id="ytRest" type="number" min="0" max="300" value="30" />
+            </div>
+            <label for="ytFocus">Foco / região trabalhada</label
+            ><input
+              id="ytFocus"
+              maxlength="120"
+              placeholder="Ex.: pernas, mobilidade, ombros"
+            />
+          </fieldset>
+          <button class="btn" style="margin-top: 15px">
+            Publicar vídeo para os usuários
+          </button>
+        </form>
+      </div>
+      <h2 style="margin-top: 26px">Vídeos publicados</h2>
+      <p id="catalogCount"></p>
+      <div id="devVideos"></div>
+    </div>
+    <div id="admin-parks" class="admin-section hidden">
+      <form class="admin-form" onsubmit="addParkFromForm(event)">
+        <h3>Adicionar parque em Manaus</h3>
+        <label for="newParkName">Nome</label
+        ><input id="newParkName" required /><label for="newParkDistrict"
+          >Bairro</label
+        ><input id="newParkDistrict" required /><label for="parkLat"
+          >Latitude</label
+        ><input
+          id="parkLat"
+          type="number"
+          step="any"
+          required
+          placeholder="-3.1375"
+        /><label for="parkLon">Longitude</label
+        ><input
+          id="parkLon"
+          type="number"
+          step="any"
+          required
+          placeholder="-60.0183"
+        /><label for="newParkDescription">Descrição</label
+        ><input id="newParkDescription" required /><label for="newParkSource"
+          >Fonte do local (URL)</label
+        ><input id="newParkSource" type="url" /><button class="btn">
+          Publicar parque
+        </button>
+      </form>
+      <h2>Editar parques</h2>
+      <p>
+        Edite os campos ou remova um item. enabled: false oculta um parque.
+        Coordenadas devem estar no recorte de Manaus.
+      </p>
+      <label for="edit-parks">Editor de parques (JSON)</label
+      ><textarea id="edit-parks" spellcheck="false"></textarea
+      ><button class="btn" onclick="saveJsonArea('parks')">
+        Salvar parques
+      </button>
+    </div>
+    <div id="admin-events" class="admin-section hidden">
+      <form class="admin-form" onsubmit="addEventFromForm(event)">
+        <h3>Publicar evento</h3>
+        <label for="newEventName">Nome</label
+        ><input id="newEventName" required /><label for="newEventType"
+          >Categoria</label
+        ><select id="newEventType">
+          <option>Bike</option>
+          <option>Caminhada</option>
+          <option>Corrida</option>
+          <option>Atletismo</option>
+          <option>Atividade em grupo</option></select
+        ><label for="newEventDate">Data</label
+        ><input id="newEventDate" type="date" /><label for="newEventTime"
+          >Hora de Manaus</label
+        ><input id="newEventTime" type="time" /><label for="newEventPlace"
+          >Local em Manaus</label
+        ><input id="newEventPlace" required /><label for="newEventDescription"
+          >Descrição</label
+        ><input id="newEventDescription" required /><label for="newEventUrl"
+          >Link do organizador ou fonte</label
+        ><input id="newEventUrl" type="url" /><label class="check-row"
+          ><input id="newEventDemo" type="checkbox" checked /> É apenas um
+          exemplo demonstrativo</label
+        ><button class="btn">Publicar evento</button>
+      </form>
+      <h2>Editar eventos</h2>
+      <p>
+        demo: true identifica exemplo. Um evento real publicado exige data e
+        fonte. published: false oculta o evento.
+      </p>
+      <label for="edit-events">Editor de eventos (JSON)</label
+      ><textarea id="edit-events" spellcheck="false"></textarea
+      ><button class="btn" onclick="saveJsonArea('events')">
+        Salvar eventos
+      </button>
+    </div>
+    <div id="admin-activities" class="admin-section hidden">
+      <h2>Editar atividades</h2>
+      <p>
+        Cada linha é [título, descrição, ícone, categoria, minutos, instruções].
+        Preserve a ordem das 20 primeiras para as recomendações existentes.
+      </p>
+      <label for="edit-activities">Editor de atividades (JSON)</label
+      ><textarea id="edit-activities" spellcheck="false"></textarea
+      ><button class="btn" onclick="saveJsonArea('activities')">
+        Salvar atividades
+      </button>
+    </div>
+    <div id="admin-texts" class="admin-section hidden">
+      <h2>Editar textos das telas</h2>
+      <p>
+        Edite o texto à direita de cada chave. As chaves correspondem aos
+        títulos e descrições das telas.
+      </p>
+      <label for="edit-texts">Editor de textos das telas (JSON)</label
+      ><textarea id="edit-texts" spellcheck="false"></textarea
+      ><button class="btn" onclick="saveJsonArea('texts')">
+        Salvar textos das telas
+      </button>
+    </div>
+    <div id="admin-advanced" class="admin-section hidden">
+      <h2>Configuração completa</h2>
+      <p>
+        Edite todo o conteúdo do protótipo. Exporta aparência, atividades,
+        parques, eventos, vídeos e textos; não exporta localização nem histórico
+        pessoal.
+      </p>
+      <button class="btn ghost" onclick="exportConfig()">
+        Exportar configuração JSON</button
+      ><label for="configImport">Importar configuração JSON</label
+      ><input
+        id="configImport"
+        type="file"
+        accept="application/json,.json"
+        onchange="importConfig(event)"
+      /><label for="edit-all">Editor completo (JSON)</label
+      ><textarea id="edit-all" spellcheck="false"></textarea
+      ><button class="btn" onclick="saveAllJson()">
+        Aplicar configuração completa
+      </button>
+    </div>
+  </div>
+</section>

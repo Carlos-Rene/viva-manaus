@@ -1,0 +1,135 @@
+<section id="walk" class="page">
+  <button class="chip" onclick="go('home')">← Início</button>
+  <h1>Parques em Manaus</h1>
+  <p>Veja onde fica cada parque e abra a localização quando quiser.</p>
+  <label for="parkSearch" class="sub">Nome do parque ou bairro</label
+  ><input
+    id="parkSearch"
+    placeholder="Jefferson Péres, Mindu, Bilhares…"
+    oninput="searchParks(this.value)"
+  />
+  <div id="walkMap" role="region" aria-label="Mapa dos parques em Manaus"></div>
+  <div class="walk-map-controls" aria-label="Controles do mapa">
+    <button
+      id="walkFollowToggle"
+      class="chip"
+      type="button"
+      aria-pressed="true"
+      onclick="toggleWalkFollowing()"
+    >
+      Acompanhamento automático: ligado
+    </button>
+    <button
+      id="walkRecenter"
+      class="chip"
+      type="button"
+      onclick="recenterWalk()"
+      disabled
+    >
+      Centralizar minha posição
+    </button>
+  </div>
+  <p id="mapStatus" class="sub" role="status"></p>
+  <p id="parkBoundaryStatus" class="sub" role="status">
+    Selecione um parque para consultar o limite configurado. Parques sem polígono não permitem verificar presença.
+  </p>
+  <details class="map-boundary-help">
+    <summary>Como configurar limites de parques</summary>
+    <p class="sub">
+      No painel de desenvolvedor, edite o JSON do parque e adicione
+      <code>boundary</code> com uma geometria GeoJSON Polygon ou MultiPolygon.
+      Use <code>boundaryAccuracy: "verified"</code> somente com uma fonte
+      confiável em <code>boundarySource</code>; sem verificação, use
+      <code>"approximate"</code>. Não há limites oficiais incluídos por padrão.
+    </p>
+  </details>
+  <p id="parkCount" class="sub"></p>
+  <div id="parksList"></div>
+  <div id="selectedParkCard" class="selected-park hidden">
+    <span class="eyebrow">Localização</span>
+    <h2 id="selectedParkName"></h2>
+    <p id="selectedParkArea"></p>
+    <p id="selectedParkInfo"></p>
+    <a
+      id="parkDirections"
+      class="btn location-link"
+      target="_blank"
+      rel="noopener"
+      >Abrir localização ↗</a
+    ><a id="parkSource" class="text-link" target="_blank" rel="noopener"
+      >Informações do local ↗</a
+    >
+  </div>
+  <p class="sub">
+    Os pontos são referências. Confira a entrada e o horário de funcionamento
+    antes de ir.
+  </p>
+  <details id="trackingDetails" class="tracking-details">
+    <summary>Registrar minha caminhada</summary>
+    <p class="sub">
+      O GPS precisa de permissão. Mantenha o app visível durante o registro.
+    </p>
+    <div class="box walk-panel" style="margin-top: 20px">
+      <span id="walkMode" class="eyebrow">PRONTO PARA CAMINHAR</span>
+      <div class="walk-stats">
+        <div><b id="walkDistance">0.00</b><span>km percorridos</span></div>
+        <div><b id="walkTime">00:00:00</b><span>tempo ativo</span></div>
+        <div><b id="walkPace">—</b><span>min/km</span></div>
+      </div>
+      <div class="route-card">
+        <div class="row">
+          <b>Meu trajeto</b
+          ><span id="routePointCount" class="sub">0 pontos</span>
+        </div>
+        <svg
+          id="routeDrawing"
+          viewBox="0 0 320 230"
+          aria-label="Trajeto da caminhada"
+          role="img"
+        >
+          <rect width="320" height="230" rx="15" fill="#17251d" />
+          <text
+            x="160"
+            y="118"
+            fill="#acbba3"
+            text-anchor="middle"
+            font-size="12"
+          >
+            Autorize o GPS para iniciar
+          </text>
+        </svg>
+        <p class="sub">
+          Linha do trajeto por coordenadas do GPS, sem fundo de ruas.
+        </p>
+      </div>
+      <p id="gpsStatus" role="status">
+        O GPS registra sua trajetória quando você inicia.
+      </p>
+      <div class="row">
+        <button id="walkStart" class="btn" onclick="startWalk()">
+          Permitir localização e iniciar</button
+        ><button
+          id="walkPause"
+          class="btn ghost"
+          onclick="pauseWalk()"
+          disabled
+        >
+          Pausar
+        </button>
+      </div>
+      <div class="row" style="margin-top: 10px">
+        <button
+          id="walkFinish"
+          class="btn ghost"
+          onclick="finishWalk()"
+          disabled
+        >
+          Finalizar e salvar resumo</button
+        ><button id="walkDemo" class="chip" onclick="startWalk(true)">
+          Testar demonstração
+        </button>
+      </div>
+      <p id="walkSummary" role="status"></p>
+    </div>
+  </details>
+</section>
