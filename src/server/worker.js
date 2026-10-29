@@ -10,6 +10,14 @@ const json = (value, status = 200, extra = {}) =>
   });
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_REQUEST_BYTES = MAX_IMAGE_BYTES + 64 * 1024;
+const AUTH_BODY_LIMIT = 4096;
+const SESSION_LIFETIME_SECONDS = 8 * 60 * 60;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+const LOGIN_FAILURE_LIMIT = 5;
+const LOGIN_LIMITER_MAX_KEYS = 1000;
+const SESSION_COOKIE = "__Host-viva-session";
+const loginAttempts = new Map();
 
 function isSupportedImage(bytes, type) {
   if (type === "image/jpeg")
@@ -27,9 +35,9 @@ function isSupportedImage(bytes, type) {
   );
 }
 
-async function readBoundedBody(request) {
+async function readBoundedBody(request, maxBytes = MAX_REQUEST_BYTES) {
   const contentLength = request.headers.get("Content-Length");
-  if (contentLength && Number(contentLength) > MAX_REQUEST_BYTES)
+  if (contentLength && Number(contentLength) > maxBytes)
     return null;
   if (!request.body) return new Uint8Array();
 
@@ -40,7 +48,7 @@ async function readBoundedBody(request) {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > MAX_REQUEST_BYTES) {
+    if (total > maxBytes) {
       await reader.cancel();
       return null;
     }
@@ -60,6 +68,277 @@ function bytesToBase64(bytes) {
   for (let offset = 0; offset < bytes.length; offset += 0x8000)
     binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
   return btoa(binary);
+}
+
+function bytesToBase64Url(bytes) {
+  return bytesToBase64(bytes)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/, "");
+}
+
+function base64UrlToBytes(value) {
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) return null;
+  try {
+    const binary = atob(
+      value.replaceAll("-", "+").replaceAll("_", "/") +
+        "=".repeat((4 - (value.length % 4)) % 4),
+    );
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    return bytesToBase64Url(bytes) === value ? bytes : null;
+  } catch {
+    return null;
+  }
+}
+
+function authConfiguration(env) {
+  const hash =
+    /^pbkdf2-sha256\$v1\$(\d{6,7})\$([A-Za-z0-9_-]{22})\$([A-Za-z0-9_-]{43})$/.exec(
+      env.VIVA_DEV_PASSWORD_HASH || "",
+    );
+  const secret = env.VIVA_SESSION_SECRET || "";
+  if (
+    !hash ||
+    Number(hash[1]) < 310000 ||
+    Number(hash[1]) > 2000000 ||
+    !base64UrlToBytes(hash[2]) ||
+    !base64UrlToBytes(hash[3]) ||
+    new TextEncoder().encode(secret).length < 32
+  )
+    return null;
+  return {
+    iterations: Number(hash[1]),
+    salt: base64UrlToBytes(hash[2]),
+    expected: base64UrlToBytes(hash[3]),
+    secret,
+  };
+}
+
+function configuredOrigins(env) {
+  return (env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
+function hasExpectedOrigin(request, url, env) {
+  const origin = request.headers.get("Origin");
+  return (
+    !!origin &&
+    (origin === url.origin || configuredOrigins(env).includes(origin))
+  );
+}
+
+function clientKey(request, env) {
+  if (env.LOCAL_PREVIEW) return "local-preview-global";
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (!ip) return null;
+  if (loginAttempts.has(ip)) return ip;
+  return loginAttempts.size >= LOGIN_LIMITER_MAX_KEYS - 1
+    ? "overflow-global"
+    : ip;
+}
+
+function loginIsLocked(key, now = Date.now()) {
+  const entry = loginAttempts.get(key);
+  if (!entry) return false;
+  if (entry.lockedUntil > now) return true;
+  if (entry.lockedUntil || now - entry.startedAt >= LOGIN_WINDOW_MS) {
+    loginAttempts.delete(key);
+    return false;
+  }
+  return false;
+}
+
+function recordLoginFailure(key, now = Date.now()) {
+  if (loginAttempts.size >= LOGIN_LIMITER_MAX_KEYS && !loginAttempts.has(key)) {
+    for (const [candidate, entry] of loginAttempts) {
+      if (entry.lockedUntil <= now && now - entry.startedAt >= LOGIN_WINDOW_MS)
+        loginAttempts.delete(candidate);
+    }
+    if (loginAttempts.size >= LOGIN_LIMITER_MAX_KEYS) return;
+  }
+  const existing = loginAttempts.get(key);
+  const entry =
+    existing && now - existing.startedAt < LOGIN_WINDOW_MS
+      ? existing
+      : { count: 0, startedAt: now, lockedUntil: 0 };
+  entry.count += 1;
+  if (entry.count >= LOGIN_FAILURE_LIMIT)
+    entry.lockedUntil = now + LOGIN_LOCKOUT_MS;
+  loginAttempts.set(key, entry);
+}
+
+async function verifyDeveloperPassword(password, config) {
+  const material = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const derived = new Uint8Array(
+    await crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        hash: "SHA-256",
+        salt: config.salt,
+        iterations: config.iterations,
+      },
+      material,
+      config.expected.length * 8,
+    ),
+  );
+  let difference = derived.length ^ config.expected.length;
+  for (let index = 0; index < config.expected.length; index++)
+    difference |= derived[index] ^ config.expected[index];
+  return difference === 0;
+}
+
+async function signSession(payload, secret) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const unsigned = `v1.${bytesToBase64Url(
+    new TextEncoder().encode(JSON.stringify(payload)),
+  )}`;
+  const signature = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(unsigned)),
+  );
+  return `${unsigned}.${bytesToBase64Url(signature)}`;
+}
+
+async function validateSession(request, config) {
+  if (!config) return false;
+  const cookies = (request.headers.get("Cookie") || "")
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part.startsWith(`${SESSION_COOKIE}=`));
+  if (cookies.length !== 1) return false;
+  const token = cookies[0].slice(SESSION_COOKIE.length + 1);
+  const parts = token.split(".");
+  if (parts.length !== 3 || parts[0] !== "v1") return false;
+  const payloadBytes = base64UrlToBytes(parts[1]);
+  const suppliedSignature = base64UrlToBytes(parts[2]);
+  if (!payloadBytes || !suppliedSignature || suppliedSignature.length !== 32)
+    return false;
+  let payload;
+  try {
+    payload = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(payloadBytes),
+    );
+  } catch {
+    return false;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  if (
+    !payload ||
+    Object.keys(payload).sort().join(",") !== "exp,iat,nonce,sub" ||
+    payload.sub !== "developer" ||
+    !Number.isInteger(payload.iat) ||
+    !Number.isInteger(payload.exp) ||
+    payload.iat > now + 60 ||
+    payload.exp <= now ||
+    payload.exp - payload.iat > SESSION_LIFETIME_SECONDS ||
+    typeof payload.nonce !== "string" ||
+    !/^[A-Za-z0-9_-]{22}$/.test(payload.nonce)
+  )
+    return false;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(config.secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["verify"],
+  );
+  return crypto.subtle.verify(
+    "HMAC",
+    key,
+    suppliedSignature,
+    new TextEncoder().encode(`v1.${parts[1]}`),
+  );
+}
+
+function sessionCookie(value, maxAge) {
+  return `${SESSION_COOKIE}=${value}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${maxAge}`;
+}
+
+async function authenticateLogin(request, env, url) {
+  if (request.method !== "POST")
+    return json({ error: "Método não permitido." }, 405);
+  if (!hasExpectedOrigin(request, url, env))
+    return json({ error: "Origem da solicitação não autorizada." }, 403);
+  const config = authConfiguration(env);
+  if (!config)
+    return json(
+      { error: "A autenticação de desenvolvedor não está configurada." },
+      503,
+    );
+  const key = clientKey(request, env);
+  if (!key)
+    return json(
+      { error: "Não foi possível verificar o limite de tentativas." },
+      503,
+    );
+  if (loginIsLocked(key))
+    return json(
+      { error: "Muitas tentativas. Aguarde antes de tentar novamente." },
+      429,
+    );
+  if (
+    !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(
+      request.headers.get("Content-Type") || "",
+    )
+  )
+    return json({ error: "Envie a senha em um corpo JSON válido." }, 400);
+  let body;
+  try {
+    const bytes = await readBoundedBody(request, AUTH_BODY_LIMIT);
+    if (!bytes)
+      return json({ error: "A solicitação excede o limite permitido." }, 413);
+    body = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch {
+    return json({ error: "Envie a senha em um corpo JSON válido." }, 400);
+  }
+  if (
+    !body ||
+    typeof body.password !== "string" ||
+    body.password.length < 1 ||
+    new TextEncoder().encode(body.password).length > 1024
+  )
+    return json({ error: "Informe uma senha válida." }, 400);
+  if (!(await verifyDeveloperPassword(body.password, config))) {
+    recordLoginFailure(key);
+    return json({ error: "Senha incorreta." }, 401);
+  }
+  loginAttempts.delete(key);
+  const now = Math.floor(Date.now() / 1000);
+  const nonce = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(16)));
+  const token = await signSession(
+    { sub: "developer", iat: now, exp: now + SESSION_LIFETIME_SECONDS, nonce },
+    config.secret,
+  );
+  return json(
+    { authenticated: true, isDeveloper: true },
+    200,
+    { "Set-Cookie": sessionCookie(token, SESSION_LIFETIME_SECONDS) },
+  );
+}
+
+function logout(request, url, env) {
+  if (request.method !== "POST")
+    return json({ error: "Método não permitido." }, 405);
+  if (!hasExpectedOrigin(request, url, env))
+    return json({ error: "Origem da solicitação não autorizada." }, 403);
+  return json(
+    { authenticated: false, isDeveloper: false },
+    200,
+    { "Set-Cookie": sessionCookie("", 0) },
+  );
 }
 
 function parseAnalysis(text) {
@@ -320,65 +599,84 @@ async function analyzeImage(request, env, url) {
   return json(analysis);
 }
 
-function identity(request, env) {
-  const id = request.headers.get("oai-authenticated-user-id"),
-    email = (request.headers.get("oai-authenticated-user-email") || "")
-      .trim()
-      .toLowerCase();
-  const allowed = (env.VIVA_DEV_EMAILS || "")
-    .split(",")
-    .map((v) => v.trim().toLowerCase())
-    .filter(Boolean);
+async function identity(request, env) {
+  const config = authConfiguration(env);
+  const authenticated = await validateSession(request, config);
   return {
-    authenticated: !!id,
-    email,
-    isDeveloper: !!id && !!email && allowed.includes(email),
+    authenticated,
+    isDeveloper: authenticated,
   };
 }
 export default {
   async fetch(request, env) {
     try {
       const url = new URL(request.url);
-      const account = identity(request, env);
+      if (url.pathname === "/api/auth/login")
+        return authenticateLogin(request, env, url);
+      if (url.pathname === "/api/auth/logout")
+        return logout(request, url, env);
       if (url.pathname === "/api/me") {
         if (request.method !== "GET")
           return json({ error: "Método não permitido." }, 405);
-        return json(account);
+        return json(await identity(request, env));
       }
       if (url.pathname === "/api/analyze-image")
         return analyzeImage(request, env, url);
       if (url.pathname === "/api/catalog") {
-        if (!account.authenticated)
+        if (!["GET", "PUT"].includes(request.method))
+          return json({ error: "Método não permitido." }, 405);
+        if (request.method === "GET") {
+          if (!env.BUCKET)
+            return json(
+              { error: "Armazenamento do catálogo indisponível." },
+              503,
+            );
+          try {
+            const object = await env.BUCKET.get("viva/catalog.json");
+            if (!object) return json({ version: null, config: null });
+            const config = await object.json();
+            if (env.LOCAL_PREVIEW) validateConfig(config);
+            return json({ version: object.etag, config });
+          } catch {
+            return json(
+              { error: "Armazenamento do catálogo indisponível." },
+              503,
+            );
+          }
+        }
+        const account = await identity(request, env);
+        if (!account.isDeveloper) {
+          if (!authConfiguration(env))
+            return json(
+              { error: "A autenticação de desenvolvedor não está configurada." },
+              503,
+            );
           return json(
-            { error: "Entre com sua conta para acessar o catálogo." },
+            { error: "É necessário entrar como desenvolvedor para publicar." },
             401,
           );
+        }
+        if (!hasExpectedOrigin(request, url, env))
+          return json({ error: "Origem da solicitação não autorizada." }, 403);
         if (!env.BUCKET)
           return json(
             { error: "Armazenamento do catálogo indisponível." },
             503,
           );
-        if (request.method === "GET") {
-          const object = await env.BUCKET.get("viva/catalog.json");
-          if (!object) return json({ version: null, config: null });
-          return json({ version: object.etag, config: await object.json() });
-        }
-        if (request.method !== "PUT")
-          return json({ error: "Método não permitido." }, 405);
-        if (!account.isDeveloper)
-          return json(
-            { error: "Sua conta não está autorizada a alterar o catálogo." },
-            403,
-          );
-        const origin = request.headers.get("Origin");
-        if (origin && origin !== url.origin)
-          return json({ error: "Origem da solicitação não autorizada." }, 403);
-        const text = await request.text();
-        if (new TextEncoder().encode(text).length > 1000000)
+        if (
+          !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(
+            request.headers.get("Content-Type") || "",
+          )
+        )
+          return json({ error: "Envie uma configuração JSON válida." }, 400);
+        const bytes = await readBoundedBody(request, 1000000);
+        if (!bytes)
           return json({ error: "Configuração maior que 1 MB." }, 413);
         let config;
         try {
-          config = validateConfig(JSON.parse(text));
+          config = validateConfig(
+            JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
+          );
         } catch (error) {
           return json(
             { error: error.message || "Configuração inválida." },
@@ -392,14 +690,24 @@ export default {
             { error: "Recarregue o catálogo antes de publicar." },
             428,
           );
-        const object = await env.BUCKET.put(
-          "viva/catalog.json",
-          JSON.stringify(config),
-          {
-            httpMetadata: { contentType: "application/json" },
-            onlyIf: match ? { etagMatches: match } : { etagDoesNotMatch: "*" },
-          },
-        );
+        let object;
+        try {
+          object = await env.BUCKET.put(
+            "viva/catalog.json",
+            JSON.stringify(config),
+            {
+              httpMetadata: { contentType: "application/json" },
+              onlyIf: match
+                ? { etagMatches: match }
+                : { etagDoesNotMatch: "*" },
+            },
+          );
+        } catch {
+          return json(
+            { error: "Armazenamento do catálogo indisponível." },
+            503,
+          );
+        }
         if (!object)
           return json(
             {

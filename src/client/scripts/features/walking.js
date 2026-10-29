@@ -177,29 +177,28 @@ function setFollowWalkPosition(enabled) {
       : "Acompanhamento automático: desligado";
   }
   const recenter = document.getElementById("walkRecenter");
-  if (recenter) recenter.disabled = !lastWalkPosition;
+  if (recenter) recenter.disabled = !walkMap;
 }
 
 function recenterWalk() {
   if (!lastWalkPosition) {
-    notify("A posição atual ficará disponível quando o GPS encontrar um sinal.");
+    locateForParks();
     return;
   }
   setFollowWalkPosition(true);
   centerAt(lastWalkPosition.point, true);
 }
 
-function renderWalkPosition(point, accuracy) {
+function renderUserPosition(point) {
   if (!walkMap) return;
-  lastWalkPosition = { point: [...point], accuracy };
-  if (!walkPositionMarker) {
+  if (!userPositionMarker) {
     const icon = L.divIcon({
       className: "walk-position-marker",
-      html: '<span aria-hidden="true"></span>',
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+      html: "",
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
     });
-    walkPositionMarker = L.marker(point, {
+    userPositionMarker = L.marker(point, {
       icon,
       keyboard: false,
       title: "Sua posição atual",
@@ -207,23 +206,14 @@ function renderWalkPosition(point, accuracy) {
       zIndexOffset: 1000,
     }).addTo(walkMap);
   } else {
-    walkPositionMarker.setLatLng(point);
+    userPositionMarker.setLatLng(point);
   }
-  if (Number.isFinite(accuracy) && accuracy > 0 && accuracy <= 1000) {
-    if (!walkAccuracyCircle)
-      walkAccuracyCircle = L.circle(point, {
-        radius: accuracy,
-        color: "#b9e8ff",
-        weight: 1,
-        fillColor: "#6dc4f2",
-        fillOpacity: 0.13,
-        interactive: false,
-      }).addTo(walkMap);
-    else walkAccuracyCircle.setLatLng(point).setRadius(accuracy);
-  } else if (walkAccuracyCircle) {
-    walkAccuracyCircle.remove();
-    walkAccuracyCircle = null;
-  }
+}
+
+function renderWalkPosition(point, accuracy) {
+  if (!walkMap) return;
+  lastWalkPosition = { point: [...point], accuracy };
+  renderUserPosition(point);
   centerAt(point);
   const recenter = document.getElementById("walkRecenter");
   if (recenter) recenter.disabled = false;

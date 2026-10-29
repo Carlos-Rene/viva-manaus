@@ -14,6 +14,7 @@ const parksSource = fs.readFileSync(
   "src/client/scripts/features/parks.js",
   "utf8",
 );
+const appCss = fs.readFileSync("src/client/styles/app.css", "utf8");
 const appSource = fs.readFileSync("src/client/scripts/app.js", "utf8");
 const leafletSource = fs.readFileSync(
   "public/vendor/leaflet/leaflet.js",
@@ -95,6 +96,9 @@ elements.set("mapStatus", status);
 
 const mapCalls = [];
 const boundaryLayers = [];
+const locationLayers = [];
+const locationMarkers = [];
+const locationCircles = [];
 const map = {
   options: {},
   setMaxBounds(bounds) {
@@ -140,8 +144,15 @@ const context = vm.createContext({
   console,
   map,
   mapCalls,
+  locationLayers,
+  locationMarkers,
+  locationCircles,
   navigator: {
     geolocation: {
+      getCurrentPosition(callback, errorCallback) {
+        this.currentPositionCallback = callback;
+        this.currentPositionErrorCallback = errorCallback;
+      },
       watchPosition(callback) {
         this.callback = callback;
         return 1;
@@ -151,6 +162,50 @@ const context = vm.createContext({
   },
   document: { getElementById: getElement },
   L: {
+    divIcon(options) {
+      return options;
+    },
+    marker(point, options) {
+      const marker = {
+        point: [...point],
+        options,
+        addTo(layer) {
+          this.layer = layer;
+          locationLayers.push(layer);
+          return this;
+        },
+        setLatLng(nextPoint) {
+          this.point = [...nextPoint];
+          return this;
+        },
+      };
+      locationMarkers.push(marker);
+      return marker;
+    },
+    circle(point, options) {
+      const circle = {
+        point: [...point],
+        options,
+        addTo(layer) {
+          this.layer = layer;
+          locationLayers.push(layer);
+          return this;
+        },
+        setLatLng(nextPoint) {
+          this.point = [...nextPoint];
+          return this;
+        },
+        setRadius(radius) {
+          this.radius = radius;
+          return this;
+        },
+        remove() {
+          this.removed = true;
+        },
+      };
+      locationCircles.push(circle);
+      return circle;
+    },
     geoJSON(boundary, options) {
       const layer = {
         boundary,
@@ -176,10 +231,10 @@ vm.runInContext(
     let walkMap = map;
     let parkBoundaryLayer = null;
     let parkLayer = null;
-    let walkPositionMarker = null;
-    let walkAccuracyCircle = null;
+    let userPositionMarker = null;
     let nearbyCenter = null;
     let parkSearch = "";
+    let locating = false;
     let walkSession = null;
     let walkWatch = null;
     let followWalkPosition = true;
@@ -210,6 +265,7 @@ vm.runInContext(
         renderedBoundary: parkBoundaryLayer.boundary,
         geofenceResult: updateParkBoundaryStatus([-3.101, -60.026], 5),
       };
+      const actualRenderWalkPosition = renderWalkPosition;
       renderWalkPosition = () => {};
       renderRoute = () => {};
       renderWalk = () => {};
@@ -241,6 +297,54 @@ vm.runInContext(
         maxBounds: map.options.maxBounds,
         maxBoundsViscosity: map.options.maxBoundsViscosity,
         status: document.getElementById("parkBoundaryStatus").textContent,
+      };
+      followWalkPosition = false;
+      recenterWalk();
+      navigator.geolocation.currentPositionCallback({
+        coords: { latitude: -3.09, longitude: -60.03, accuracy: 25 },
+      });
+      globalThis.firstParkLocation = {
+        status: document.getElementById("mapStatus").textContent,
+        markerCount: locationMarkers.length,
+        circleCount: locationCircles.length,
+        point: locationMarkers[0].point,
+        markerLayer: locationMarkers[0].layer,
+        iconSize: locationMarkers[0].options.icon.iconSize,
+        iconAnchor: locationMarkers[0].options.icon.iconAnchor,
+      };
+      locateForParks();
+      navigator.geolocation.currentPositionCallback({
+        coords: { latitude: -3.095, longitude: -60.025, accuracy: 40 },
+      });
+      globalThis.updatedParkLocation = {
+        markerCount: locationMarkers.length,
+        circleCount: locationCircles.length,
+        point: locationMarkers[0].point,
+      };
+      locateForParks();
+      navigator.geolocation.currentPositionCallback({
+        coords: { latitude: -3.096, longitude: -60.024, accuracy: 1001 },
+      });
+      globalThis.invalidAccuracyParkLocation = {
+        markerCount: locationMarkers.length,
+        circleCount: locationCircles.length,
+        point: locationMarkers[0].point,
+      };
+      const parkMarkerCount = locationMarkers.length;
+      const parkCircleCount = locationCircles.length;
+      actualRenderWalkPosition([-3.097, -60.023], 25);
+      actualRenderWalkPosition([-3.098, -60.022], 30);
+      const currentMarker = locationMarkers[0];
+      globalThis.walkingPosition = {
+        markerCount: locationMarkers.length,
+        additionalMarkerCount: locationMarkers.length - parkMarkerCount,
+        circleCount: locationCircles.length - parkCircleCount,
+        point: currentMarker.point,
+        iconSize: currentMarker.options.icon.iconSize,
+        iconAnchor: currentMarker.options.icon.iconAnchor,
+        iconClass: currentMarker.options.icon.className,
+        iconHtml: currentMarker.options.icon.html,
+        accuracy: lastWalkPosition.accuracy,
       };
       globalThis.pointInApproximatePolygon =
         pointInParkBoundary([-3.101, -60.026], ${JSON.stringify(bilharesBoundary)});
@@ -286,6 +390,60 @@ assert.deepEqual(JSON.parse(JSON.stringify(context.secondSelection.maxBounds)), 
 ]);
 assert.equal(context.secondSelection.maxBoundsViscosity, 0.65);
 assert.match(context.secondSelection.status, /nenhum limite geográfico foi fornecido/);
+assert.match(context.firstParkLocation.status, /Sua posição foi localizada/);
+assert.equal(context.firstParkLocation.markerCount, 1);
+assert.equal(context.firstParkLocation.circleCount, 0);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.firstParkLocation.point)),
+  [-3.09, -60.03],
+);
+assert.equal(context.firstParkLocation.markerLayer, map);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.firstParkLocation.iconSize)),
+  [16, 16],
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.firstParkLocation.iconAnchor)),
+  [8, 8],
+);
+assert.equal(context.updatedParkLocation.markerCount, 1);
+assert.equal(context.updatedParkLocation.circleCount, 0);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.updatedParkLocation.point)),
+  [-3.095, -60.025],
+);
+assert.equal(context.invalidAccuracyParkLocation.markerCount, 1);
+assert.equal(context.invalidAccuracyParkLocation.circleCount, 0);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.invalidAccuracyParkLocation.point)),
+  [-3.096, -60.024],
+);
+assert.equal(context.walkingPosition.markerCount, 1);
+assert.equal(context.walkingPosition.additionalMarkerCount, 0);
+assert.equal(context.walkingPosition.circleCount, 0);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.walkingPosition.point)),
+  [-3.098, -60.022],
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.walkingPosition.iconSize)),
+  [16, 16],
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.walkingPosition.iconAnchor)),
+  [8, 8],
+);
+assert.equal(context.walkingPosition.iconClass, "walk-position-marker");
+assert.equal(context.walkingPosition.iconHtml, "");
+assert.equal(context.walkingPosition.accuracy, 30);
+assert.match(appCss, /\.walk-position-marker\s*\{/);
+assert.doesNotMatch(appCss, /\.leaflet-div-icon\.walk-position-marker/);
+assert.match(appCss, /border:\s*2px solid #fff/);
+assert.match(appCss, /border-radius:\s*50%/);
+assert.match(appCss, /background:\s*#238ddd/);
+assert.match(appCss, /box-shadow:\s*0 1px 7px #000b/);
+assert.doesNotMatch(appCss, /\.walk-position-marker\s+span/);
+assert.ok(locationLayers.every((layer) => layer === map));
 assert.equal(context.pointInApproximatePolygon, true);
 assert.ok(leafletSource.includes("setMaxBounds:function"));
 assert.ok(leafletSource.includes("maxBoundsViscosity"));

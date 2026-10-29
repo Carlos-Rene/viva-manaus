@@ -16,6 +16,7 @@ function locateForParks() {
           "Você está fora do recorte de Manaus. Escolha um parque pela busca ou pelo mapa.";
         return;
       }
+      renderUserPosition(pos);
       nearbyCenter = pos;
       centerAt(pos);
       renderParks();

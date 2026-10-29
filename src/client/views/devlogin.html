@@ -2,38 +2,41 @@
   <button class="chip" onclick="go('home')">← Voltar ao app</button>
   <div class="eyebrow">Área da equipe</div>
   <h1>Login de desenvolvedor</h1>
-  <p>Entre com a conta autorizada para cadastrar vídeos e gerenciar o Viva.</p>
+  <p>Informe a senha de desenvolvedor para gerenciar o conteúdo do Viva.</p>
   <div class="box">
-    <label for="devLoginEmail">E-mail da conta</label
-    ><input
-      id="devLoginEmail"
-      type="email"
-      readonly
-      placeholder="Verificado no login seguro"
-    />
-    <p id="devLoginStatus">
-      O acesso é confirmado no servidor. Nenhuma senha é coletada nesta tela.
-    </p>
-    <a
-      class="btn login-anchor"
-      href="/signin-with-chatgpt?return_to=%2F%3Fpanel%3Ddeveloper"
-      target="_top"
-      >Entrar com conta autorizada</a
-    ><button
+    <form id="developerLoginForm" onsubmit="loginDeveloper(event)">
+      <label for="devLoginPassword">Senha de desenvolvedor</label>
+      <input
+        id="devLoginPassword"
+        type="password"
+        autocomplete="current-password"
+        required
+        maxlength="1024"
+        placeholder="Digite sua senha"
+      />
+      <p id="devLoginStatus" role="status" aria-live="polite">
+        O acesso é verificado com segurança pelo servidor.
+      </p>
+      <button class="btn login-anchor" type="submit">Entrar</button>
+    </form>
+    <button
       id="devLoginContinue"
       class="btn ghost hidden"
       onclick="setProfile('developer')"
     >
-      Entrar no painel</button
-    ><a
-      class="text-link"
-      href="/signout-with-chatgpt?return_to=%2F"
-      target="_top"
-      >Trocar de conta</a
+      Entrar no painel
+    </button>
+    <button
+      id="devLogoutButton"
+      class="text-link hidden"
+      type="button"
+      onclick="logoutDeveloper()"
     >
+      Sair da conta de desenvolvedor
+    </button>
   </div>
   <p class="sub">
-    O login usa a conta do ChatGPT. Fazer login não libera edição
-    automaticamente: apenas e-mails autorizados no servidor podem publicar.
+    A senha nunca é salva neste navegador. O acesso ao painel e às alterações
+    do catálogo depende da confirmação do servidor.
   </p>
 </section>

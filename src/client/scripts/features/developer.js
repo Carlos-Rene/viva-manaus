@@ -1,7 +1,7 @@
 function setProfile(role) {
   if (role === "developer" && !serverIdentity.isDeveloper) {
-    notify("Sua conta não tem acesso de desenvolvedor.");
-    go("profiles");
+    notify("Entre com a senha de desenvolvedor para acessar o painel.");
+    go("devlogin");
     return;
   }
   activeProfile = role === "developer" ? "developer" : "user";
@@ -230,27 +230,30 @@ async function publishCatalog(data) {
 async function initializeAccount() {
   try {
     const response = await fetch("/api/me", { cache: "no-store" });
-    if (!response.ok) throw Error();
+    if (!response.ok) throw Error("Não foi possível verificar a sessão.");
     const identity = await response.json();
     serverIdentity = { ...identity, ready: true };
     document.getElementById("accountStatus").textContent =
       identity.authenticated
-        ? "Conta conectada: " + identity.email
-        : "Entre com sua conta para acessar o app.";
+        ? "Sessão de desenvolvedor conectada."
+        : "Você está usando o Viva como visitante.";
     document.getElementById("accountRole").textContent = identity.isDeveloper
-      ? "Sua conta está autorizada a gerenciar o conteúdo."
-      : "Perfil de usuário. O painel de edição é restrito à equipe autorizada.";
+      ? "Sua sessão está autorizada a gerenciar o conteúdo."
+      : "O painel de edição é restrito à equipe autorizada.";
     document
       .getElementById("openDevButton")
       .classList.toggle("hidden", !identity.isDeveloper);
-    document.getElementById("devLoginEmail").value = identity.email || "";
     document.getElementById("devLoginStatus").textContent = identity.isDeveloper
-      ? "Conta verificada. Seu acesso de desenvolvedor está autorizado."
-      : identity.authenticated
-        ? "Conta conectada, mas sem autorização de desenvolvedor."
-        : "Faça login com a conta autorizada.";
+      ? "Sessão verificada. Seu acesso de desenvolvedor está autorizado."
+      : "Informe a senha configurada pela equipe do Viva.";
+    document
+      .getElementById("developerLoginForm")
+      .classList.toggle("hidden", identity.isDeveloper);
     document
       .getElementById("devLoginContinue")
+      .classList.toggle("hidden", !identity.isDeveloper);
+    document
+      .getElementById("devLogoutButton")
       .classList.toggle("hidden", !identity.isDeveloper);
     if (new URLSearchParams(location.search).get("panel") === "developer")
       go("devlogin");
@@ -265,15 +268,68 @@ async function initializeAccount() {
     }
   } catch {
     serverIdentity = { ready: true, isDeveloper: false };
+    document.getElementById("openDevButton").classList.add("hidden");
+    document
+      .getElementById("developerLoginForm")
+      .classList.remove("hidden");
+    document.getElementById("devLoginContinue").classList.add("hidden");
+    document.getElementById("devLogoutButton").classList.add("hidden");
     document.getElementById("accountStatus").textContent =
-      "Não foi possível verificar a conta neste ambiente.";
+      "Não foi possível verificar a sessão neste ambiente.";
     document.getElementById("accountRole").textContent =
       "O painel de desenvolvedor permanece bloqueado.";
+    document.getElementById("devLoginStatus").textContent =
+      "Não foi possível confirmar o acesso. Tente novamente mais tarde.";
+    renderDeveloper();
   } finally {
     document.getElementById("splash").classList.add("done");
     setTimeout(
       () => document.getElementById("splash").classList.add("splash-hidden"),
       300,
     );
+  }
+}
+
+async function loginDeveloper(event) {
+  event.preventDefault();
+  const input = document.getElementById("devLoginPassword");
+  const status = document.getElementById("devLoginStatus");
+  const password = input.value;
+  input.value = "";
+  status.textContent = "Verificando senha…";
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      status.textContent = result.error || "Não foi possível entrar.";
+      return;
+    }
+    await initializeAccount();
+    if (!serverIdentity.isDeveloper)
+      status.textContent = "O servidor não confirmou a sessão de desenvolvedor.";
+  } catch {
+    status.textContent = "Não foi possível entrar. Verifique a conexão e tente novamente.";
+  }
+}
+
+async function logoutDeveloper() {
+  const status = document.getElementById("devLoginStatus");
+  try {
+    const response = await fetch("/api/auth/logout", { method: "POST" });
+    const result = await response.json();
+    if (!response.ok) {
+      status.textContent = result.error || "Não foi possível sair.";
+      return;
+    }
+    await initializeAccount();
+    setProfile("user");
+    go("devlogin");
+    status.textContent = "Você saiu da sessão de desenvolvedor.";
+  } catch {
+    status.textContent = "Não foi possível sair. Verifique a conexão e tente novamente.";
   }
 }

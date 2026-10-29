@@ -12,8 +12,8 @@ function notify(s) {
 
 function go(id) {
   if (id === "developer" && !serverIdentity.isDeveloper) {
-    notify("Painel restrito a contas autorizadas.");
-    id = "profiles";
+    notify("Entre com a senha de desenvolvedor para acessar o painel.");
+    id = "devlogin";
   }
   if (id !== "walk") restoreWalkMapNavigationBounds();
   document.body.classList.remove("show-welcome");
