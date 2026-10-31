@@ -10,6 +10,12 @@ function notify(s) {
   setTimeout(() => t.classList.add("hidden"), 3000);
 }
 
+function navigateFromLogo(event) {
+  event.preventDefault();
+  if (!document.getElementById("home")?.classList.contains("active"))
+    go("home");
+}
+
 function go(id) {
   if (id === "developer" && !serverIdentity.isDeveloper) {
     notify("Entre com a senha de desenvolvedor para acessar o painel.");

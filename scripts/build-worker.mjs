@@ -1,17 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import { assetTypes } from "./asset-types.mjs";
 const read = (p) => fs.readFileSync(p, "utf8");
 const assets = {};
-const types = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".mp4": "video/mp4",
-};
 function asset(url, content) {
   assets[url] = {
-    type: types[path.extname(url)],
+    type: assetTypes[path.extname(url).toLowerCase()],
     data: Buffer.from(content).toString("base64"),
   };
 }
@@ -20,7 +14,7 @@ function walk(dir, prefix = "") {
     const source = path.join(dir, entry.name),
       url = prefix + "/" + entry.name;
     if (entry.isDirectory()) walk(source, url);
-    else if (types[path.extname(entry.name)])
+    else if (assetTypes[path.extname(entry.name).toLowerCase()])
       asset(url, fs.readFileSync(source));
   }
 }

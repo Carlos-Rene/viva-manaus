@@ -290,15 +290,15 @@ function showSelectedPark(park, frame = true) {
     }).addTo(walkMap);
     const bounds = parkBoundaryLayer.getBounds();
     if (bounds.isValid()) {
-      const restrictToBilharesRectangle =
+      const restrictToBilharesBoundary =
         park.id === "bilhares" && hasApproximateBoundary;
       setWalkMapNavigationBounds(
         hasVerifiedBoundary
           ? bounds.pad(0.18)
-          : restrictToBilharesRectangle
+          : restrictToBilharesBoundary
             ? bounds
             : MANAUS_BOUNDS,
-        restrictToBilharesRectangle ? 1 : 0.65,
+        restrictToBilharesBoundary ? 1 : 0.65,
       );
       if (frame)
         walkMap.fitBounds(bounds, {

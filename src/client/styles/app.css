@@ -36,14 +36,16 @@ aside {
   flex-direction: column;
 }
 .logo {
-  font:
-    800 36px Manrope,
-    sans-serif;
-  letter-spacing: -2px;
+  display: block;
+  width: 100%;
+  max-width: 140px;
+  cursor: pointer;
 }
-.logo i {
-  color: #94ad61;
-  font-style: normal;
+.logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 aside small {
   color: var(--muted);
@@ -83,6 +85,28 @@ header {
   align-items: center;
   margin-bottom: 32px;
   color: var(--muted);
+}
+header .brand {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: min(220px, 100%);
+  min-height: 48px;
+  cursor: pointer;
+}
+header .brand img {
+  display: block;
+  width: 100%;
+  max-width: 180px;
+  height: auto;
+  object-fit: contain;
+}
+.logo:focus-visible,
+header .brand:focus-visible,
+.splash-logo:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 .avatar {
   border-radius: 50%;
@@ -445,9 +469,6 @@ select {
   aside footer {
     display: none;
   }
-  .logo {
-    font-size: 28px;
-  }
   nav {
     display: flex;
   }
@@ -575,16 +596,17 @@ header {
 header .brand {
   display: flex;
   align-items: center;
-  gap: 7px;
-  color: #173f35;
-  font:
-    800 29px Manrope,
-    sans-serif;
-  letter-spacing: -1.5px;
+  justify-content: flex-start;
+  width: min(200px, 100%);
+  min-height: 48px;
+  cursor: pointer;
 }
-header .brand svg {
-  width: 32px;
-  height: 32px;
+header .brand img {
+  display: block;
+  width: 100%;
+  max-width: 150px;
+  height: auto;
+  object-fit: contain;
 }
 .avatar {
   background: #ebefdf;
@@ -949,8 +971,8 @@ button:focus-visible {
   visibility: visible;
 }
 header .brand > img {
-  width: 32px !important;
-  height: 32px !important;
+  width: 43px !important;
+  height: 43px !important;
 }
 :root {
   --green: #b9dca3;
@@ -1676,15 +1698,23 @@ body[data-profile="developer"] .admin-remove {
 .leaflet-container {
   background: #1a2b24;
 }
-.map-place-label {
-  background: none;
+.leaflet-tooltip.map-place-label {
+  background: transparent;
   border: 0;
+  outline: 0;
   box-shadow: none;
+  padding: 0;
   font-size: 10px;
-  color: #c2ccb1;
+  font-weight: 700;
+  color: #fff;
   letter-spacing: 0.4px;
+  max-width: 220px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-shadow: 0 1px 3px #000, 0 0 2px #000;
 }
-.map-place-label:before {
+.leaflet-tooltip.map-place-label:before,
+.leaflet-tooltip.map-place-label:after {
   display: none;
 }
 :root {
@@ -1918,15 +1948,20 @@ body.show-welcome main {
   transition: opacity 0.25s;
 }
 .splash-logo {
-  font:
-    800 58px Manrope,
-    sans-serif;
-  color: #e9eee4;
-  letter-spacing: -3px;
+  width: min(80vw, 420px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
 }
-.splash-logo span {
-  color: #a9bc94;
-  margin-left: 7px;
+.splash-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 290px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 18px rgba(30, 49, 42, 0.3));
 }
 .splash-track {
   width: 130px;

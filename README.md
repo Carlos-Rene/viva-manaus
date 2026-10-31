@@ -71,25 +71,46 @@ Se o Ollama ou o modelo não estiverem disponíveis, a atividade mostra um erro 
 
 ### Compartilhar a prévia pelo ngrok
 
-A prévia pode ser compartilhada sem exigir que visitantes façam login. O acesso é público para qualquer pessoa com o link; a edição do catálogo exige a senha de desenvolvedor configurada no servidor. O [ngrok Free atribui à conta um domínio de desenvolvimento](https://ngrok.com/docs/pricing-limits/free-plan-limits/) que permanece o mesmo ao reiniciar o agente. Use o domínio atribuído, sem configurar uma política OAuth do ngrok:
+O ngrok cria um túnel HTTPS público para o serviço local em `http://127.0.0.1:4173`. A URL é pública para qualquer pessoa que a conheça; a edição do catálogo continua exigindo a senha de desenvolvedor configurada no servidor. O computador, a prévia e o agente ngrok precisam permanecer ligados enquanto o endereço estiver em uso.
 
-1. Inicie o Ollama e a prévia em um terminal:
+#### Instalação e autenticação no Artix Linux
+
+Instale ngrok para Linux usando as instruções oficiais de [download e instalação](https://ngrok.com/download) ou um pacote compatível com Artix de uma fonte confiável. Confirme que `ngrok` está disponível no `PATH`:
+
+```sh
+ngrok version
+```
+
+Crie ou acesse sua conta em [ngrok](https://dashboard.ngrok.com/), copie seu authtoken do painel e configure-o para o usuário local:
+
+```sh
+ngrok config add-authtoken YOUR_NGROK_AUTHTOKEN
+ngrok config check
+```
+
+O authtoken fica na configuração privada do ngrok fora deste repositório. Não o coloque no código, no `.env` do projeto ou em arquivos versionados.
+
+#### Iniciar e acessar remotamente
+
+1. Se ainda não fez a configuração local, copie `.env.example` para `.env`. Inicie o Ollama conforme a seção de desenvolvimento local, mantendo-o ligado somente ao loopback (`127.0.0.1:11434`).
+2. Se sua conta tiver um domínio estático ngrok atribuído, defina `NGROK_DOMAIN` no `.env` como o hostname (ou origem HTTPS) exato, por exemplo `nome-atribuido.ngrok-free.app`. Não invente um domínio: consulte o domínio efetivamente atribuído à conta no painel ngrok. Sem esse valor, ngrok atribui uma URL temporária.
+3. Inicie a prévia e o túnel juntos:
 
    ```sh
-   npm run dev
+   npm run dev:ngrok
    ```
 
-2. Em outro terminal, crie o túnel HTTP para a prévia:
+   O comando verifica a configuração e o authtoken do ngrok, inicia o Viva, aguarda a resposta local e encaminha ngrok para `http://127.0.0.1:4173`. Ele imprime a URL HTTPS pública quando o túnel está pronto. Abra essa URL para usar o site; a conexão HTTPS habilita os recursos do navegador que exigem contexto seguro, como GPS e câmera.
 
-   ```sh
-   ngrok http 4173
-   ```
+   A URL pública exata é adicionada somente como origem permitida ao processo local do Viva (junto às origens exatas já configuradas). Isso mantém a validação de origem sem curingas e permite autenticação e análise de imagem também quando ngrok atribui uma URL temporária. O valor não é gravado no `.env`.
 
-3. Copie a origem HTTPS estável indicada pelo ngrok (por exemplo, `https://nome-atribuido.ngrok-free.app`) para `ALLOWED_ORIGINS` no `.env`, sem caminho nem barra final. Essa origem é necessária também para as solicitações de autenticação e publicação. Reinicie `npm run dev` após alterar `.env`; o túnel pode continuar ativo. A prévia valida essa origem para as operações protegidas, mas isso não substitui o rate limiter.
+4. Para parar os dois processos iniciados por esse comando, pressione **Ctrl+C** no terminal. O launcher encerra apenas os processos Viva e ngrok que ele próprio iniciou. Não use `systemctl`; não é necessário criar serviços systemd ou dinit para a execução manual.
 
-O agente ngrok abre uma conexão de saída e encaminha o tráfego público ao serviço local, como descrito em [como compartilhar localhost](https://ngrok.com/docs/share-localhost/tunnels/). A prévia aplica limites globais porque não depende de cabeçalhos de IP encaminhado para identificar visitantes: 10 tentativas a cada 15 minutos e no máximo uma análise simultânea. Ao atingir um limite, o endpoint retorna HTTP 429; as tentativas voltam a ser permitidas após a janela. Como os limites são globais, um visitante pode consumir a cota compartilhada; reiniciar a prévia também reinicia a janela.
+Para depuração, também é possível iniciar cada processo separadamente em terminais diferentes: `npm run dev`, depois `ngrok http http://127.0.0.1:4173`. Nesse modo, configure `ALLOWED_ORIGINS` com a origem HTTPS exata do ngrok no `.env` e reinicie a prévia depois de alterar o arquivo; para uma URL temporária, faça isso após o ngrok exibi-la. Para encerrar, use Ctrl+C em cada terminal. Não inicie esse fluxo separado ao mesmo tempo que `npm run dev:ngrok`, pois a porta `4173` já estará ocupada.
 
-Não crie um túnel para a porta `11434`: somente a porta do Viva (`4173`) deve ser exposta. O navegador envia a foto ao endpoint `/api/analyze-image` do Viva, que encaminha os bytes ao Ollama em `OLLAMA_BASE_URL`; o endpoint Ollama e qualquer token não são expostos ao navegador. No plano gratuito, o ngrok pode mostrar uma página intersticial antes do site; o visitante deve confirmar para continuar.
+No plano gratuito, os visitantes podem ver a página intersticial do ngrok com o botão **Visit Site** antes de entrar no Viva. Isso é comportamento padrão do plano gratuito e é intencionalmente aceito neste projeto; não tentamos removê-lo nem contorná-lo.
+
+A prévia aplica limites globais de 10 tentativas a cada 15 minutos e no máximo uma análise de imagem simultânea. Não crie túnel para a porta `11434`: somente a porta do Viva (`4173`) é exposta. O navegador envia fotos ao endpoint `/api/analyze-image` do Viva, e somente o backend encaminha os bytes ao Ollama local; a porta e o endpoint Ollama não ficam públicos.
 
 ### Produção
 

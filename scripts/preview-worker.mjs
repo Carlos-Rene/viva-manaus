@@ -172,6 +172,8 @@ const server = http.createServer(async (req, res) => {
 server.requestTimeout = 60_000;
 server.headersTimeout = 15_000;
 server.keepAliveTimeout = 5_000;
-server.listen(4173, "127.0.0.1", () =>
-  console.log("Worker preview ready on 4173. No simulated sign-in."),
+server.listen(Number(process.env.VIVA_PREVIEW_PORT || 4173), "127.0.0.1", () =>
+  console.log(
+    `Worker preview ready on ${server.address().port}. No simulated sign-in.`,
+  ),
 );

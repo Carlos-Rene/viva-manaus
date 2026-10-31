@@ -182,7 +182,12 @@ function validParkBoundaryGeometry(geometry) {
                 inManaus([coord[1], coord[0]]),
             ) &&
             ring[0][0] === ring[ring.length - 1][0] &&
-            ring[0][1] === ring[ring.length - 1][1],
+            ring[0][1] === ring[ring.length - 1][1] &&
+            new Set(
+              ring
+                .slice(0, -1)
+                .map(([longitude, latitude]) => `${longitude},${latitude}`),
+            ).size >= 3,
         ),
     )
   );

@@ -21,41 +21,86 @@ const leafletSource = fs.readFileSync(
   "utf8",
 );
 
-const bilharesBoundary = {
-  type: "FeatureCollection",
-  features: [
-    {
-      type: "Feature",
-      properties: {
-        id: "bilhares",
-        name: "Parque dos Bilhares",
-        boundaryStatus: "approximate",
-      },
-      geometry: {
-        type: "Polygon",
-        coordinates: [
-          [
-            [-60.02894, -3.10128],
-            [-60.02442, -3.10042],
-            [-60.02453, -3.1015],
-            [-60.02869, -3.10261],
-            [-60.02894, -3.10128],
-          ],
-        ],
-      },
-    },
-  ],
-};
+const defaultParksMatch = appSource.match(
+  /const defaultParks = (\[[\s\S]*?\n\]);\n\nstate\.parks/,
+);
+assert.ok(defaultParksMatch, "bundled park data must be present");
+const bundledParks = vm.runInNewContext(defaultParksMatch[1]);
+const bundledBilhares = bundledParks.find((park) => park.id === "bilhares");
+const bilharesBoundary = bundledBilhares.boundary;
+const bundledMindu = bundledParks.find((park) => park.id === "mindu");
 
-const mindu = {
-  id: "mindu",
-  name: "Parque Municipal do Mindu",
-  district: "Parque Dez de Novembro",
-  point: [-3.08091, -60.00357],
-  pointAccuracy: "reference",
-  description: "Área verde.",
-  enabled: true,
-};
+function boundaryCoordinates(boundary) {
+  const features =
+    boundary.type === "FeatureCollection"
+      ? boundary.features
+      : [boundary.type === "Feature" ? boundary : { geometry: boundary }];
+  return features.flatMap((feature) => {
+    const geometry = feature.geometry;
+    return geometry.type === "Polygon"
+      ? geometry.coordinates.flat()
+      : geometry.coordinates.flat(2);
+  });
+}
+
+function boundaryBounds(boundary) {
+  const points = boundaryCoordinates(boundary);
+  const longitudes = points.map(([longitude]) => longitude);
+  const latitudes = points.map(([, latitude]) => latitude);
+  return {
+    west: Math.min(...longitudes),
+    east: Math.max(...longitudes),
+    south: Math.min(...latitudes),
+    north: Math.max(...latitudes),
+  };
+}
+
+function translateBoundary(boundary, offset) {
+  const translateGeometry = (geometry) => ({
+    ...geometry,
+    coordinates:
+      geometry.type === "Polygon"
+        ? geometry.coordinates.map((ring) =>
+            ring.map(([longitude, latitude, ...extra]) => [
+              longitude + offset,
+              latitude + offset,
+              ...extra,
+            ]),
+          )
+        : geometry.coordinates.map((polygon) =>
+            polygon.map((ring) =>
+              ring.map(([longitude, latitude, ...extra]) => [
+                longitude + offset,
+                latitude + offset,
+                ...extra,
+              ]),
+            ),
+          ),
+  });
+  const translateFeature = (feature) => ({
+    ...feature,
+    geometry: translateGeometry(feature.geometry),
+  });
+
+  if (boundary.type === "FeatureCollection")
+    return {
+      ...boundary,
+      features: boundary.features.map(translateFeature),
+    };
+  if (boundary.type === "Feature") return translateFeature(boundary);
+  return translateGeometry(boundary);
+}
+
+const bilharesBoundaryPoint = boundaryCoordinates(bilharesBoundary)[0];
+const bilharesBounds = boundaryBounds(bilharesBoundary);
+const changedBilharesBoundary = translateBoundary(
+  bilharesBoundary,
+  Math.min(
+    bilharesBounds.east - bilharesBounds.west,
+    bilharesBounds.north - bilharesBounds.south,
+  ) / 10,
+);
+const mindu = { ...bundledMindu };
 const bilhares = {
   id: "bilhares",
   name: "Parque Ponte dos Bilhares",
@@ -113,23 +158,13 @@ const map = {
   },
 };
 
-function coordinatesForBoundary(boundary) {
-  const features =
-    boundary.type === "FeatureCollection" ? boundary.features : [boundary];
-  const points = features.flatMap((feature) => {
-    const geometry =
-      feature.type === "Feature" ? feature.geometry : feature;
-    return geometry.type === "Polygon"
-      ? geometry.coordinates.flat()
-      : geometry.coordinates.flat(2);
-  });
-  const longitudes = points.map(([longitude]) => longitude);
-  const latitudes = points.map(([, latitude]) => latitude);
+function leafletBounds(boundary) {
+  const { west, east, south, north } = boundaryBounds(boundary);
   return {
-    west: Math.min(...longitudes),
-    east: Math.max(...longitudes),
-    south: Math.min(...latitudes),
-    north: Math.max(...latitudes),
+    west,
+    east,
+    south,
+    north,
     isValid() {
       return true;
     },
@@ -214,7 +249,7 @@ const context = vm.createContext({
           return this;
         },
         getBounds() {
-          return coordinatesForBoundary(boundary);
+          return leafletBounds(boundary);
         },
         remove() {},
       };
@@ -263,8 +298,19 @@ vm.runInContext(
         status: document.getElementById("parkBoundaryStatus").textContent,
         style: parkBoundaryLayer.options.style,
         renderedBoundary: parkBoundaryLayer.boundary,
-        geofenceResult: updateParkBoundaryStatus([-3.101, -60.026], 5),
+        geofenceResult: updateParkBoundaryStatus(
+          [${bilharesBoundaryPoint[1]}, ${bilharesBoundaryPoint[0]}],
+          5,
+        ),
       };
+      selectedPark.boundary = ${JSON.stringify(changedBilharesBoundary)};
+      showSelectedPark(selectedPark);
+      globalThis.changedSelection = {
+        bounds: mapCalls.filter(([type]) => type === "fitBounds").at(-1)?.[1],
+        maxBounds: map.options.maxBounds,
+        maxBoundsViscosity: map.options.maxBoundsViscosity,
+      };
+      selectedPark.boundary = ${JSON.stringify(bilharesBoundary)};
       const actualRenderWalkPosition = renderWalkPosition;
       renderWalkPosition = () => {};
       renderRoute = () => {};
@@ -292,7 +338,7 @@ vm.runInContext(
       globalThis.secondSelection = {
         id: selectedPark.id,
         sameMap: walkMap === existingMap,
-        centerCall: mapCalls.filter(([type]) => type === "flyTo").at(-1),
+        bounds: mapCalls.filter(([type]) => type === "fitBounds").at(-1)?.[1],
         boundaryLayer: parkBoundaryLayer,
         maxBounds: map.options.maxBounds,
         maxBoundsViscosity: map.options.maxBoundsViscosity,
@@ -347,21 +393,93 @@ vm.runInContext(
         accuracy: lastWalkPosition.accuracy,
       };
       globalThis.pointInApproximatePolygon =
-        pointInParkBoundary([-3.101, -60.026], ${JSON.stringify(bilharesBoundary)});
+        pointInParkBoundary(
+          ${JSON.stringify([bilharesBoundaryPoint[1], bilharesBoundaryPoint[0]])},
+          ${JSON.stringify(bilharesBoundary)},
+        );
     `,
   context,
 );
 
 assert.equal(context.validParkBoundary(bilharesBoundary), true);
+assert.equal(context.validParkBoundary(bundledMindu.boundary), true);
+assert.equal(context.validParkBoundary(changedBilharesBoundary), true);
 assert.equal(context.validParkBoundary({ type: "FeatureCollection", features: [] }), false);
+assert.equal(
+  context.validParkBoundary({
+    type: "Polygon",
+    coordinates: [
+      [
+        [-60.03, -3.1],
+        [-60.02, -3.1],
+        [-60.03, -3.1],
+      ],
+    ],
+  }),
+  false,
+);
+assert.equal(
+  context.validParkBoundary({
+    type: "Polygon",
+    coordinates: [
+      [
+        [-60.03, -3.1],
+        [-60.02, -3.1],
+        [-60.02, -3.09],
+      ],
+    ],
+  }),
+  false,
+);
+assert.equal(
+  context.validParkBoundary({
+    type: "Polygon",
+    coordinates: [
+      [
+        [-60.03, -3.1],
+        [-60.02, -3.1],
+        [-60.02, -3.09],
+        [-60.03, -3.1],
+      ],
+    ],
+  }),
+  true,
+);
+assert.equal(
+  context.validParkBoundary({
+    type: "Polygon",
+    coordinates: [
+      [
+        [-60.2, -3.1],
+        [-60.19, -3.1],
+        [-60.19, -3.09],
+        [-60.2, -3.1],
+      ],
+    ],
+  }),
+  false,
+);
 assert.equal(context.firstSelection.id, "bilhares");
 assert.equal(context.firstSelection.registrationOpen, true);
 assert.equal(context.firstSelection.fit, 1);
-assert.equal(context.firstSelection.bounds.west, -60.02894);
-assert.equal(context.firstSelection.bounds.east, -60.02442);
-assert.equal(context.firstSelection.maxBounds.south, -3.10261);
-assert.equal(context.firstSelection.maxBounds.north, -3.10042);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.firstSelection.bounds)),
+  boundaryBounds(bilharesBoundary),
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.firstSelection.maxBounds)),
+  boundaryBounds(bilharesBoundary),
+);
 assert.equal(context.firstSelection.maxBoundsViscosity, 1);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.changedSelection.bounds)),
+  boundaryBounds(changedBilharesBoundary),
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.changedSelection.maxBounds)),
+  boundaryBounds(changedBilharesBoundary),
+);
+assert.equal(context.changedSelection.maxBoundsViscosity, 1);
 assert.deepEqual(
   JSON.parse(JSON.stringify(context.firstSelection.fitOptions)),
   { padding: [32, 32], maxZoom: 17, animate: true, duration: 0.55 },
@@ -370,7 +488,7 @@ assert.match(context.firstSelection.status, /Polígono aproximado, não oficial/
 assert.match(context.firstSelection.status, /retângulo que envolve o polígono/);
 assert.match(context.firstSelection.status, /não é uma geofence/);
 assert.equal(context.firstSelection.style.dashArray, "7 6");
-assert.equal(context.firstSelection.renderedBoundary.type, "FeatureCollection");
+assert.equal(context.firstSelection.renderedBoundary.type, bilharesBoundary.type);
 assert.equal(context.firstSelection.geofenceResult, null);
 assert.deepEqual(
   JSON.parse(JSON.stringify(context.outsideGpsRoute.points)),
@@ -380,16 +498,19 @@ assert.equal(context.outsideGpsRoute.meters, 0);
 assert.equal(context.secondSelection.id, "mindu");
 assert.equal(context.secondSelection.sameMap, true);
 assert.deepEqual(
-  JSON.parse(JSON.stringify(context.secondSelection.centerCall.slice(1, 3))),
-  [[-3.08091, -60.00357], 16],
+  JSON.parse(JSON.stringify(context.secondSelection.bounds)),
+  boundaryBounds(bundledMindu.boundary),
 );
-assert.equal(context.secondSelection.boundaryLayer, null);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(context.secondSelection.boundaryLayer.boundary)),
+  JSON.parse(JSON.stringify(bundledMindu.boundary)),
+);
 assert.deepEqual(JSON.parse(JSON.stringify(context.secondSelection.maxBounds)), [
   [-3.19, -60.16],
   [-2.88, -59.86],
 ]);
 assert.equal(context.secondSelection.maxBoundsViscosity, 0.65);
-assert.match(context.secondSelection.status, /nenhum limite geográfico foi fornecido/);
+assert.match(context.secondSelection.status, /Área aproximada, não oficial/);
 assert.match(context.firstParkLocation.status, /Sua posição foi localizada/);
 assert.equal(context.firstParkLocation.markerCount, 1);
 assert.equal(context.firstParkLocation.circleCount, 0);
@@ -443,25 +564,68 @@ assert.match(appCss, /border-radius:\s*50%/);
 assert.match(appCss, /background:\s*#238ddd/);
 assert.match(appCss, /box-shadow:\s*0 1px 7px #000b/);
 assert.doesNotMatch(appCss, /\.walk-position-marker\s+span/);
+const parkLabelStyle = appCss.match(
+  /\.leaflet-tooltip\.map-place-label\s*\{([^}]*)\}/s,
+);
+assert.ok(parkLabelStyle, "park label styles must override Leaflet tooltips");
+for (const declaration of [
+  /background:\s*transparent;/,
+  /border:\s*0;/,
+  /outline:\s*0;/,
+  /box-shadow:\s*none;/,
+  /padding:\s*0;/,
+  /font-weight:\s*700;/,
+  /color:\s*#fff;/,
+  /max-width:\s*220px;/,
+  /white-space:\s*normal;/,
+  /text-shadow:/,
+]) {
+  assert.match(parkLabelStyle[1], declaration);
+}
+assert.match(
+  appCss,
+  /\.leaflet-tooltip\.map-place-label:before,[\s\S]*?\.leaflet-tooltip\.map-place-label:after\s*\{\s*display:\s*none;/,
+);
 assert.ok(locationLayers.every((layer) => layer === map));
 assert.equal(context.pointInApproximatePolygon, true);
 assert.ok(leafletSource.includes("setMaxBounds:function"));
 assert.ok(leafletSource.includes("maxBoundsViscosity"));
 assert.ok(leafletSource.includes("_onPreDragLimit:function"));
 
-for (const [longitude, latitude] of [
-  ["-60.02894", "-3.10128"],
-  ["-60.02442", "-3.10042"],
-  ["-60.02453", "-3.1015"],
-  ["-60.02869", "-3.10261"],
-  ["-60.02894", "-3.10128"],
-]) {
-  assert.match(
-    appSource,
-    new RegExp(`\\[${longitude},\\s*${latitude}\\]`),
-    `The supplied Bilhares polygon coordinate [${longitude}, ${latitude}] must remain unchanged.`,
-  );
+const mergeFunctionStart = appSource.indexOf(
+  "function mergeBundledParkData(parks) {",
+);
+assert.notEqual(mergeFunctionStart, -1);
+let mergeFunctionDepth = 0;
+let mergeFunctionEnd = mergeFunctionStart;
+for (; mergeFunctionEnd < appSource.length; mergeFunctionEnd += 1) {
+  if (appSource[mergeFunctionEnd] === "{") mergeFunctionDepth += 1;
+  if (appSource[mergeFunctionEnd] === "}") {
+    mergeFunctionDepth -= 1;
+    if (!mergeFunctionDepth) {
+      mergeFunctionEnd += 1;
+      break;
+    }
+  }
 }
+const mergeContext = vm.createContext({
+  defaultParks: bundledParks,
+  structuredClone,
+  validParkBoundary: context.validParkBoundary,
+});
+const mergeBundledParkData = vm.runInContext(
+  `${appSource.slice(mergeFunctionStart, mergeFunctionEnd)}; mergeBundledParkData;`,
+  mergeContext,
+);
+const savedBoundary = structuredClone(changedBilharesBoundary);
+const mergedSavedPark = mergeBundledParkData([
+  { ...bundledBilhares, boundary: savedBoundary },
+])[0];
+assert.deepEqual(
+  JSON.parse(JSON.stringify(mergedSavedPark.boundary)),
+  savedBoundary,
+  "valid saved park boundaries must survive bundled-data initialization",
+);
 assert.match(
   fs.readFileSync("src/client/scripts/features/core.js", "utf8"),
   /if \(id !== "walk"\) restoreWalkMapNavigationBounds\(\);/,

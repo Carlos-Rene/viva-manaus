@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/preview-worker.mjs",
+    "dev:ngrok": "node scripts/dev-ngrok.mjs",
     "build": "node scripts/build-worker.mjs",
-    "test": "node tests/security-checks.mjs && node tests/local-catalog-storage-checks.mjs && node tests/structure-checks.mjs && node tests/park-map-checks.mjs && node tests/photo-discovery-checks.mjs && node tests/photo-analysis-checks.mjs"
+    "test": "node tests/security-checks.mjs && node tests/local-catalog-storage-checks.mjs && node tests/structure-checks.mjs && node tests/static-asset-checks.mjs && node tests/park-map-checks.mjs && node tests/photo-discovery-checks.mjs && node tests/photo-analysis-checks.mjs"
   }
 }
